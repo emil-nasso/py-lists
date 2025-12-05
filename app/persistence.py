@@ -62,9 +62,7 @@ class PersistenceManager:
             # Load list.json file
             list_file = self._get_list_file(list_id)
             if not list_file.exists():
-                self._logger.warning(
-                    f"Skipping directory {list_dir.name}: list.json not found"
-                )
+                self._logger.warning(f"Skipping directory {list_dir.name}: list.json not found")
                 skipped_count += 1
                 continue
 
@@ -86,7 +84,7 @@ class PersistenceManager:
 
         if skipped_count > 0:
             self._logger.info(
-                f"Loaded {loaded_count} lists from storage ({skipped_count} skipped due to errors)"
+                f"Loaded {loaded_count} lists from storage (skipped {skipped_count} with errors)"
             )
         else:
             self._logger.info(f"Loaded {loaded_count} lists from storage")
@@ -128,9 +126,7 @@ class PersistenceManager:
             # Load list.json file
             list_file = list_dir / "list.json"
             if not list_file.exists():
-                self._logger.warning(
-                    f"Skipping directory {list_dir.name}: list.json not found"
-                )
+                self._logger.warning(f"Skipping directory {list_dir.name}: list.json not found")
                 skipped_count += 1
                 continue
 
@@ -140,9 +136,7 @@ class PersistenceManager:
                 lists[list_id] = list_data
                 loaded_count += 1
             except json.JSONDecodeError as e:
-                self._logger.warning(
-                    f"Skipping corrupted list {list_id}: JSON decode error - {e}"
-                )
+                self._logger.warning(f"Skipping corrupted list {list_id}: JSON decode error - {e}")
                 skipped_count += 1
             except Exception as e:
                 self._logger.warning(
@@ -152,10 +146,10 @@ class PersistenceManager:
 
         if skipped_count > 0:
             self._logger.info(
-                f"Loaded {loaded_count} raw lists from storage ({skipped_count} skipped due to errors)"
+                f"Loaded {loaded_count} raw lists from disk (skipped {skipped_count} with errors)"
             )
         else:
-            self._logger.info(f"Loaded {loaded_count} raw lists from storage")
+            self._logger.info(f"Loaded {loaded_count} raw lists from disk")
 
         return lists
 

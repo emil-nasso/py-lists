@@ -8,7 +8,6 @@ Provides a migration system for handling data schema changes across versions.
 import json
 import logging
 from pathlib import Path
-from typing import Any
 
 from app.persistence import PersistenceManager
 
@@ -86,7 +85,7 @@ class DataMigrator:
 
             # Check if migration is needed (any field missing order or all orders are 0)
             needs_migration = False
-            field_orders = []
+            field_orders: list[int] = []
 
             for field_data in fields.values():
                 order = field_data.get("order", None)
@@ -130,7 +129,7 @@ class DataMigrator:
             return last_migration
         except Exception as e:
             self._logger.warning(
-                f"Failed to load migration state: {type(e).__name__} - {e}. Starting from beginning."
+                f"Migration state load error: {type(e).__name__} - {e}. Starting from beginning."
             )
             return -1
 
