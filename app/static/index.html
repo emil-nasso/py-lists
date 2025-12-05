@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>List Maker</title>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50">
+    <div x-data="app()" x-init="init()" class="container mx-auto px-4 py-8 max-w-7xl">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-2">List Maker</h1>
+            <p class="text-gray-600">Create and manage your lists with custom fields</p>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left Panel: All Lists -->
+            <div class="lg:col-span-1">
+                <div class="bg-white rounded-lg shadow p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold text-gray-800">Lists</h2>
+                        <button @click="showCreateList = true" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                            + New
+                        </button>
+                    </div>
+
+                    <!-- Create List Form -->
+                    <div x-show="showCreateList" class="mb-4 p-4 border border-gray-200 rounded">
+                        <input
+                            type="text"
+                            x-model="newListName"
+                            @keyup.enter="createList"
+                            placeholder="List name"
+                            class="w-full px-3 py-2 border border-gray-300 rounded mb-2"
+                        >
+                        <div class="flex gap-2">
+                            <button @click="createList" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">
+                                Create
+                            </button>
+                            <button @click="showCreateList = false; newListName = ''" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Lists -->
+                    <div class="space-y-2">
+                        <template x-for="list in lists" :key="list.id">
+                            <div
+                                @click="selectList(list.id)"
+                                :class="selectedList?.id === list.id ? 'bg-blue-100 border-blue-500' : 'bg-gray-50 border-gray-200'"
+                                class="p-3 border rounded cursor-pointer hover:border-blue-300 transition"
+                            >
+                                <div class="flex justify-between items-center">
+                                    <span class="font-medium" x-text="list.name"></span>
+                                    <button
+                                        @click.stop="deleteList(list.id)"
+                                        class="text-red-500 hover:text-red-700"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                                <div class="text-sm text-gray-500 mt-1">
+                                    <span x-text="Object.keys(list.fields).length"></span> fields,
+                                    <span x-text="Object.keys(list.items).length"></span> items
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: List Details -->
+            <div class="lg:col-span-2">
+                <div x-show="selectedList" class="bg-white rounded-lg shadow p-6">
+                    <template x-if="selectedList">
+                        <div>
+                            <!-- List Header -->
+                            <div class="mb-6">
+                                <div x-show="!editingListName" class="flex items-center justify-between">
+                                    <h2 class="text-3xl font-bold text-gray-800" x-text="selectedList.name"></h2>
+                                    <button @click="startEditListName" class="text-blue-500 hover:text-blue-700">
+                                        Edit
+                                    </button>
+                                </div>
+                                <div x-show="editingListName" class="flex gap-2">
+                                    <input
+                                        type="text"
+                                        x-model="editListNameValue"
+                                        @keyup.enter="saveListName"
+                                        class="flex-1 px-3 py-2 border border-gray-300 rounded"
+                                    >
+                                    <button @click="saveListName" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
+                                        Save
+                                    </button>
+                                    <button @click="editingListName = false" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Fields Section -->
+                            <div class="mb-6">
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-xl font-semibold text-gray-700">Fields</h3>
+                                    <button @click="showAddField = !showAddField" class="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm">
+                                        + Add Field
+                                    </button>
+                                </div>
+
+                                <!-- Add Field Form -->
+                                <div x-show="showAddField" class="mb-4 p-4 border border-purple-200 rounded bg-purple-50">
+                                    <div class="space-y-3">
+                                        <input
+                                            type="text"
+                                            x-model="newField.name"
+                                            placeholder="Field name"
+                                            class="w-full px-3 py-2 border border-gray-300 rounded"
+                                        >
+                                        <select x-model="newField.type" class="w-full px-3 py-2 border border-gray-300 rounded">
+                                            <option value="text">Text</option>
+                                            <option value="number">Number</option>
+                                            <option value="boolean">Boolean</option>
+                                            <option value="url">URL</option>
+                                            <option value="image">Image</option>
+                                        </select>
+                                        <div x-show="newField.type === 'text'" class="flex items-center gap-2">
+                                            <input type="checkbox" x-model="newField.multiline" id="multiline" class="rounded">
+                                            <label for="multiline" class="text-sm text-gray-700">Multiline</label>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <button @click="addField" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">
+                                                Add
+                                            </button>
+                                            <button @click="showAddField = false; resetNewField()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Fields List -->
+                                <div class="space-y-2">
+                                    <template x-for="[fieldId, field] in Object.entries(selectedList.fields)" :key="fieldId">
+                                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
+                                            <div>
+                                                <span class="font-medium" x-text="field.name"></span>
+                                                <span class="text-sm text-gray-500 ml-2">
+                                                    (<span x-text="field.type"></span><span x-show="field.type === 'text' && field.multiline"> - multiline</span>)
+                                                </span>
+                                            </div>
+                                            <button
+                                                @click="deleteField(fieldId)"
+                                                class="text-red-500 hover:text-red-700"
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    </template>
+                                </div>
+                            </div>
+
+                            <!-- Items Section -->
+                            <div>
+                                <div class="flex justify-between items-center mb-3">
+                                    <h3 class="text-xl font-semibold text-gray-700">Items</h3>
+                                    <button
+                                        @click="showAddItem = !showAddItem"
+                                        :disabled="Object.keys(selectedList.fields).length === 0"
+                                        class="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                    >
+                                        + Add Item
+                                    </button>
+                                </div>
+
+                                <!-- Add Item Form -->
+                                <div x-show="showAddItem" class="mb-4 p-4 border border-green-200 rounded bg-green-50">
+                                    <div class="space-y-3">
+                                        <template x-for="[fieldId, field] in Object.entries(selectedList.fields)" :key="fieldId">
+                                            <div>
+                                                <label class="block text-sm font-medium text-gray-700 mb-1" x-text="field.name"></label>
+                                                <input
+                                                    x-show="field.type === 'text'"
+                                                    type="text"
+                                                    x-model="newItemValues[fieldId]"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded"
+                                                >
+                                                <input
+                                                    x-show="field.type === 'number'"
+                                                    type="number"
+                                                    x-model.number="newItemValues[fieldId]"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded"
+                                                >
+                                                <input
+                                                    x-show="field.type === 'boolean'"
+                                                    type="checkbox"
+                                                    x-model="newItemValues[fieldId]"
+                                                    class="rounded"
+                                                >
+                                                <input
+                                                    x-show="field.type === 'url'"
+                                                    type="url"
+                                                    x-model="newItemValues[fieldId]"
+                                                    placeholder="https://example.com"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded"
+                                                >
+                                                <input
+                                                    x-show="field.type === 'image'"
+                                                    type="image"
+                                                    x-model="newItemValues[fieldId]"
+                                                    placeholder="https://example.com/image.png"
+                                                    class="w-full px-3 py-2 border border-gray-300 rounded"
+                                                >
+                                            </div>
+                                        </template>
+                                        <div class="flex gap-2">
+                                            <button @click="addItem" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">
+                                                Add
+                                            </button>
+                                            <button @click="showAddItem = false; resetNewItem()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                                                Cancel
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Items Table -->
+                                <div x-show="Object.keys(selectedList.items).length > 0" class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-100">
+                                            <tr>
+                                                <template x-for="[fieldId, field] in Object.entries(selectedList.fields)" :key="fieldId">
+                                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" x-text="field.name"></th>
+                                                </template>
+                                                <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            <template x-for="[itemId, fieldValues] in Object.entries(selectedList.items)" :key="itemId">
+                                                <tr class="hover:bg-gray-50">
+                                                    <template x-for="[fieldId, field] in Object.entries(selectedList.fields)" :key="fieldId">
+                                                        <td class="px-4 py-3 text-sm text-gray-900">
+                                                            <!-- View mode -->
+                                                            <div x-show="editingItemId !== itemId">
+                                                                <span x-show="field.type === 'text'" x-text="getFieldValue(fieldValues, fieldId)"></span>
+                                                                <span x-show="field.type === 'number'" x-text="getFieldValue(fieldValues, fieldId)"></span>
+                                                                <span x-show="field.type === 'boolean'">
+                                                                    <span x-show="getFieldValue(fieldValues, fieldId)" class="text-green-600">✓</span>
+                                                                    <span x-show="!getFieldValue(fieldValues, fieldId)" class="text-red-600">✗</span>
+                                                                </span>
+                                                                <a x-show="field.type === 'url'"
+                                                                   :href="getFieldValue(fieldValues, fieldId)"
+                                                                   target="_blank"
+                                                                   rel="noopener noreferrer"
+                                                                   class="text-blue-600 hover:underline"
+                                                                   x-text="getFieldValue(fieldValues, fieldId)">
+                                                                </a>
+                                                                <img x-show="field.type === 'image'"
+                                                                   :src="getFieldValue(fieldValues, fieldId)"
+                                                                   class=""
+                                                                   >
+                                                                </img>
+                                                            </div>
+                                                            <!-- Edit mode -->
+                                                            <div x-show="editingItemId === itemId">
+                                                                <input
+                                                                    x-show="field.type === 'text'"
+                                                                    type="text"
+                                                                    x-model="editItemValues[fieldId]"
+                                                                    class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                                >
+                                                                <input
+                                                                    x-show="field.type === 'number'"
+                                                                    type="number"
+                                                                    x-model.number="editItemValues[fieldId]"
+                                                                    class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                                >
+                                                                <input
+                                                                    x-show="field.type === 'boolean'"
+                                                                    type="checkbox"
+                                                                    x-model="editItemValues[fieldId]"
+                                                                    class="rounded"
+                                                                >
+                                                                <input
+                                                                    x-show="field.type === 'url'"
+                                                                    type="url"
+                                                                    x-model="editItemValues[fieldId]"
+                                                                    placeholder="https://example.com"
+                                                                    class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                                >
+                                                                <input
+                                                                    x-show="field.type === 'image'"
+                                                                    type="text"
+                                                                    x-model="editItemValues[fieldId]"
+                                                                    placeholder="https://example.com/image.png"
+                                                                    class="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                                                                >
+                                                            </div>
+                                                        </td>
+                                                    </template>
+                                                    <td class="px-4 py-3 text-sm text-right">
+                                                        <div x-show="editingItemId !== itemId" class="flex gap-2 justify-end">
+                                                            <button
+                                                                @click="startEditItem(itemId, fieldValues)"
+                                                                class="text-blue-500 hover:text-blue-700"
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button
+                                                                @click="deleteItem(itemId)"
+                                                                class="text-red-500 hover:text-red-700"
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </div>
+                                                        <div x-show="editingItemId === itemId" class="flex gap-2 justify-end">
+                                                            <button
+                                                                @click="saveItem(itemId)"
+                                                                class="text-green-600 hover:text-green-800"
+                                                            >
+                                                                Save
+                                                            </button>
+                                                            <button
+                                                                @click="cancelEditItem"
+                                                                class="text-gray-500 hover:text-gray-700"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            </template>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                <div x-show="Object.keys(selectedList.items).length === 0" class="text-center text-gray-500 py-8">
+                                    No items yet. Add some items to get started!
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <div x-show="!selectedList" class="bg-white rounded-lg shadow p-12 text-center">
+                    <p class="text-gray-500 text-lg">Select a list to view details</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function app() {
+            return {
+                lists: [],
+                selectedList: null,
+                showCreateList: false,
+                newListName: '',
+                editingListName: false,
+                editListNameValue: '',
+                showAddField: false,
+                newField: {
+                    name: '',
+                    type: 'text',
+                    multiline: false
+                },
+                showAddItem: false,
+                newItemValues: {},
+                editingItemId: null,
+                editItemValues: {},
+
+                async init() {
+                    await this.loadLists();
+                },
+
+                async loadLists() {
+                    try {
+                        const response = await fetch('/lists');
+                        this.lists = await response.json();
+                        // Refresh selected list if it exists
+                        if (this.selectedList) {
+                            const updated = this.lists.find(l => l.id === this.selectedList.id);
+                            if (updated) {
+                                this.selectedList = updated;
+                            }
+                        }
+                    } catch (error) {
+                        console.error('Error loading lists:', error);
+                        alert('Failed to load lists');
+                    }
+                },
+
+                async createList() {
+                    if (!this.newListName.trim()) return;
+
+                    try {
+                        const response = await fetch('/lists', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: this.newListName })
+                        });
+
+                        if (response.ok) {
+                            this.newListName = '';
+                            this.showCreateList = false;
+                            await this.loadLists();
+                        }
+                    } catch (error) {
+                        console.error('Error creating list:', error);
+                        alert('Failed to create list');
+                    }
+                },
+
+                async selectList(listId) {
+                    try {
+                        const response = await fetch(`/lists/${listId}`);
+                        this.selectedList = await response.json();
+                        this.resetNewItem();
+                        this.editingItemId = null;
+                        this.editItemValues = {};
+                    } catch (error) {
+                        console.error('Error loading list:', error);
+                        alert('Failed to load list');
+                    }
+                },
+
+                async deleteList(listId) {
+                    if (!confirm('Are you sure you want to delete this list?')) return;
+
+                    try {
+                        const response = await fetch(`/lists/${listId}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            if (this.selectedList?.id === listId) {
+                                this.selectedList = null;
+                            }
+                            await this.loadLists();
+                        }
+                    } catch (error) {
+                        console.error('Error deleting list:', error);
+                        alert('Failed to delete list');
+                    }
+                },
+
+                startEditListName() {
+                    this.editListNameValue = this.selectedList.name;
+                    this.editingListName = true;
+                },
+
+                async saveListName() {
+                    if (!this.editListNameValue.trim()) return;
+
+                    try {
+                        const response = await fetch(`/lists/${this.selectedList.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: this.editListNameValue })
+                        });
+
+                        if (response.ok) {
+                            this.editingListName = false;
+                            await this.loadLists();
+                        }
+                    } catch (error) {
+                        console.error('Error updating list name:', error);
+                        alert('Failed to update list name');
+                    }
+                },
+
+                resetNewField() {
+                    this.newField = {
+                        name: '',
+                        type: 'text',
+                        multiline: false
+                    };
+                },
+
+                async addField() {
+                    if (!this.newField.name.trim()) return;
+
+                    const fieldData = {
+                        name: this.newField.name,
+                        type: this.newField.type
+                    };
+
+                    if (this.newField.type === 'text') {
+                        fieldData.multiline = this.newField.multiline;
+                    }
+
+                    try {
+                        const response = await fetch(`/lists/${this.selectedList.id}/fields`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(fieldData)
+                        });
+
+                        if (response.ok) {
+                            const updatedList = await response.json();
+                            this.selectedList = updatedList;
+                            this.updateListInArray(updatedList);
+                            this.showAddField = false;
+                            this.resetNewField();
+                        } else {
+                            const error = await response.json();
+                            alert(`Failed to add field: ${error.detail}`);
+                        }
+                    } catch (error) {
+                        console.error('Error adding field:', error);
+                        alert('Failed to add field');
+                    }
+                },
+
+                async deleteField(fieldId) {
+                    if (!confirm('Are you sure? This will delete the field from all items.')) return;
+
+                    try {
+                        const response = await fetch(`/lists/${this.selectedList.id}/fields/${fieldId}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            const updatedList = await response.json();
+                            this.selectedList = updatedList;
+                            this.updateListInArray(updatedList);
+                        }
+                    } catch (error) {
+                        console.error('Error deleting field:', error);
+                        alert('Failed to delete field');
+                    }
+                },
+
+                resetNewItem() {
+                    this.newItemValues = {};
+                    if (this.selectedList) {
+                        // Initialize with default values
+                        for (const [fieldId, field] of Object.entries(this.selectedList.fields)) {
+                            if (field.type === 'boolean') {
+                                this.newItemValues[fieldId] = false;
+                            } else if (field.type === 'number') {
+                                this.newItemValues[fieldId] = 0;
+                            } else if (field.type === 'url') {
+                                this.newItemValues[fieldId] = '';
+                            } else {
+                                this.newItemValues[fieldId] = '';
+                            }
+                        }
+                    }
+                },
+
+                async addItem() {
+                    try {
+                        const response = await fetch(`/lists/${this.selectedList.id}/items`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ field_values: this.newItemValues })
+                        });
+
+                        if (response.ok) {
+                            const updatedList = await response.json();
+                            this.selectedList = updatedList;
+                            this.updateListInArray(updatedList);
+                            this.showAddItem = false;
+                            this.resetNewItem();
+                        } else {
+                            const error = await response.json();
+                            alert(`Failed to add item: ${error.detail}`);
+                        }
+                    } catch (error) {
+                        console.error('Error adding item:', error);
+                        alert('Failed to add item');
+                    }
+                },
+
+                async deleteItem(itemId) {
+                    if (!confirm('Are you sure you want to delete this item?')) return;
+
+                    try {
+                        const response = await fetch(`/lists/${this.selectedList.id}/items/${itemId}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            const updatedList = await response.json();
+                            this.selectedList = updatedList;
+                            this.updateListInArray(updatedList);
+                        }
+                    } catch (error) {
+                        console.error('Error deleting item:', error);
+                        alert('Failed to delete item');
+                    }
+                },
+
+                updateListInArray(updatedList) {
+                    // Update the list in the lists array to keep sidebar in sync
+                    const index = this.lists.findIndex(l => l.id === updatedList.id);
+                    if (index !== -1) {
+                        this.lists[index] = updatedList;
+                    }
+                },
+
+                startEditItem(itemId, fieldValues) {
+                    this.editingItemId = itemId;
+                    this.editItemValues = {};
+                    // Populate edit values from current field values
+                    for (const fv of fieldValues) {
+                        this.editItemValues[fv.field_id] = fv.value;
+                    }
+                },
+
+                async saveItem(itemId) {
+                    try {
+                        const response = await fetch(`/lists/${this.selectedList.id}/items/${itemId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ field_values: this.editItemValues })
+                        });
+
+                        if (response.ok) {
+                            const updatedList = await response.json();
+                            this.selectedList = updatedList;
+                            this.updateListInArray(updatedList);
+                            this.editingItemId = null;
+                            this.editItemValues = {};
+                        } else {
+                            const error = await response.json();
+                            alert(`Failed to update item: ${error.detail}`);
+                        }
+                    } catch (error) {
+                        console.error('Error updating item:', error);
+                        alert('Failed to update item');
+                    }
+                },
+
+                cancelEditItem() {
+                    this.editingItemId = null;
+                    this.editItemValues = {};
+                },
+
+                getFieldValue(fieldValues, fieldId) {
+                    const fieldValue = fieldValues.find(fv => fv.field_id === fieldId);
+                    return fieldValue ? fieldValue.value : '';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
