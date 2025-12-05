@@ -32,6 +32,7 @@ class FieldType(BaseModel):
     """Base model for all field types."""
 
     name: str
+    order: int = 0
 
 
 class BooleanFieldType(FieldType):

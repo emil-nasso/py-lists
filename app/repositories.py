@@ -5,18 +5,25 @@ from app.field_types import (
     FieldTypeCreateUnion,
     FieldValueType,
 )
+from app.migration import DataMigrator
 from app.models import FieldValue, List
 from app.persistence import PersistenceManager
 
 
 class ListRepository:
     def __init__(
-        self, field_registry: FieldHandlerRegistry, persistence_manager: PersistenceManager
+        self,
+        field_registry: FieldHandlerRegistry,
+        persistence_manager: PersistenceManager,
+        migrator: DataMigrator,
     ) -> None:
         self._field_registry = field_registry
         self._persistence_manager = persistence_manager
 
-        # Load existing lists from disk
+        # Run migrations before loading lists
+        migrator.run()
+
+        # Load existing lists from disk (migrations already applied)
         self._lists = self._persistence_manager.load_all()
 
     def add(self, list: List) -> List:
@@ -56,8 +63,12 @@ class ListRepository:
         # Generate a new field ID
         field_id = uuid4()
 
+        # Calculate next order (max existing order + 1, or 0 if no fields)
+        next_order = max((f.order for f in list.fields.values()), default=-1) + 1
+
         # Use registry to create field instance and get default value
         field = self._field_registry.create_field_instance(field_create)
+        field.order = next_order
         default_value = self._field_registry.get_default_value(field)
 
         # Add the field to the list
@@ -82,6 +93,92 @@ class ListRepository:
         # Remove associated field values from all items
         for item_values in list.items.values():
             item_values[:] = [fv for fv in item_values if fv.field_id != field_id]
+
+        self._persistence_manager.write_to_disk(list)
+        return list
+
+    def reorder_fields(self, list_id: UUID, field_orders: dict[UUID, int]) -> List | None:
+        """
+        Reorder fields in a list.
+
+        Args:
+            list_id: The list ID
+            field_orders: Dictionary mapping field IDs to their new order positions
+
+        Returns:
+            Updated list or None if not found
+
+        Raises:
+            ValueError: If field_orders is invalid
+        """
+        list = self.get(list_id)
+        if not list:
+            return None
+
+        # Validate all field IDs exist
+        if set(field_orders.keys()) != set(list.fields.keys()):
+            raise ValueError("Must provide orders for all fields")
+
+        # Validate no duplicate orders
+        orders = list(field_orders.values())
+        if len(orders) != len(set(orders)):
+            raise ValueError("Duplicate order values are not allowed")
+
+        # Apply new orders
+        for field_id, order in field_orders.items():
+            list.fields[field_id].order = order
+
+        # Normalize orders (sort by order, then reassign 0, 1, 2, ...)
+        sorted_fields = sorted(list.fields.items(), key=lambda x: x[1].order)
+        for idx, (field_id, field) in enumerate(sorted_fields):
+            field.order = idx
+
+        self._persistence_manager.write_to_disk(list)
+        return list
+
+    def move_field(self, list_id: UUID, field_id: UUID, direction: str) -> List | None:
+        """
+        Move a field up or down in the order.
+
+        Args:
+            list_id: The list ID
+            field_id: The field to move
+            direction: "up" or "down"
+
+        Returns:
+            Updated list or None if not found
+
+        Raises:
+            ValueError: If direction is invalid or move is not possible
+        """
+        if direction not in ("up", "down"):
+            raise ValueError("Direction must be 'up' or 'down'")
+
+        list = self.get(list_id)
+        if not list or field_id not in list.fields:
+            return None
+
+        # Get sorted field list
+        sorted_fields = sorted(list.fields.items(), key=lambda x: x[1].order)
+        current_idx = next(i for i, (fid, _) in enumerate(sorted_fields) if fid == field_id)
+
+        # Determine swap target
+        if direction == "up":
+            if current_idx == 0:
+                raise ValueError("Cannot move first field up")
+            swap_idx = current_idx - 1
+        else:  # down
+            if current_idx == len(sorted_fields) - 1:
+                raise ValueError("Cannot move last field down")
+            swap_idx = current_idx + 1
+
+        # Swap orders
+        current_field_id = sorted_fields[current_idx][0]
+        swap_field_id = sorted_fields[swap_idx][0]
+
+        current_order = list.fields[current_field_id].order
+        list.fields[current_field_id].order = list.fields[swap_field_id].order
+        list.fields[swap_field_id].order = current_order
 
         self._persistence_manager.write_to_disk(list)
         return list

@@ -15,9 +15,9 @@
             <p class="text-gray-600">Create and manage your lists with custom fields</p>
         </div>
 
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="space-y-6">
             <!-- Left Panel: All Lists -->
-            <div class="lg:col-span-1">
+            <div :class="selectedList ? 'lg:hidden' : 'block'">
                 <div class="bg-white rounded-lg shadow p-6">
                     <div class="flex justify-between items-center mb-4">
                         <h2 class="text-2xl font-semibold text-gray-800">Lists</h2>
@@ -73,96 +73,30 @@
             </div>
 
             <!-- Right Panel: List Details -->
-            <div class="lg:col-span-2">
-                <div x-show="selectedList" class="bg-white rounded-lg shadow p-6">
+            <div x-show="selectedList">
+                <div class="bg-white rounded-lg shadow p-6">
                     <template x-if="selectedList">
                         <div>
-                            <!-- List Header -->
-                            <div class="mb-6">
-                                <div x-show="!editingListName" class="flex items-center justify-between">
+                            <!-- VIEW MODE -->
+                            <div x-show="viewMode === 'view'">
+                                <!-- Back button (desktop only) -->
+                                <div class="mb-4 hidden lg:block">
+                                    <button @click="selectedList = null" class="text-blue-600 hover:text-blue-800 flex items-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                                        </svg>
+                                        Back to Lists
+                                    </button>
+                                </div>
+                                <!-- List Header -->
+                                <div class="mb-6 flex items-center justify-between">
                                     <h2 class="text-3xl font-bold text-gray-800" x-text="selectedList.name"></h2>
-                                    <button @click="startEditListName" class="text-blue-500 hover:text-blue-700">
-                                        Edit
-                                    </button>
-                                </div>
-                                <div x-show="editingListName" class="flex gap-2">
-                                    <input
-                                        type="text"
-                                        x-model="editListNameValue"
-                                        @keyup.enter="saveListName"
-                                        class="flex-1 px-3 py-2 border border-gray-300 rounded"
-                                    >
-                                    <button @click="saveListName" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-                                        Save
-                                    </button>
-                                    <button @click="editingListName = false" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
-                                        Cancel
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Fields Section -->
-                            <div class="mb-6">
-                                <div class="flex justify-between items-center mb-3">
-                                    <h3 class="text-xl font-semibold text-gray-700">Fields</h3>
-                                    <button @click="showAddField = !showAddField" class="bg-purple-500 text-white px-3 py-1 rounded hover:bg-purple-600 text-sm">
-                                        + Add Field
+                                    <button @click="enterEditMode" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                                        Edit List
                                     </button>
                                 </div>
 
-                                <!-- Add Field Form -->
-                                <div x-show="showAddField" class="mb-4 p-4 border border-purple-200 rounded bg-purple-50">
-                                    <div class="space-y-3">
-                                        <input
-                                            type="text"
-                                            x-model="newField.name"
-                                            placeholder="Field name"
-                                            class="w-full px-3 py-2 border border-gray-300 rounded"
-                                        >
-                                        <select x-model="newField.type" class="w-full px-3 py-2 border border-gray-300 rounded">
-                                            <option value="text">Text</option>
-                                            <option value="number">Number</option>
-                                            <option value="boolean">Boolean</option>
-                                            <option value="url">URL</option>
-                                            <option value="image">Image</option>
-                                        </select>
-                                        <div x-show="newField.type === 'text'" class="flex items-center gap-2">
-                                            <input type="checkbox" x-model="newField.multiline" id="multiline" class="rounded">
-                                            <label for="multiline" class="text-sm text-gray-700">Multiline</label>
-                                        </div>
-                                        <div class="flex gap-2">
-                                            <button @click="addField" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">
-                                                Add
-                                            </button>
-                                            <button @click="showAddField = false; resetNewField()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
-                                                Cancel
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <!-- Fields List -->
-                                <div class="space-y-2">
-                                    <template x-for="[fieldId, field] in Object.entries(selectedList.fields)" :key="fieldId">
-                                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
-                                            <div>
-                                                <span class="font-medium" x-text="field.name"></span>
-                                                <span class="text-sm text-gray-500 ml-2">
-                                                    (<span x-text="field.type"></span><span x-show="field.type === 'text' && field.multiline"> - multiline</span>)
-                                                </span>
-                                            </div>
-                                            <button
-                                                @click="deleteField(fieldId)"
-                                                class="text-red-500 hover:text-red-700"
-                                            >
-                                                Delete
-                                            </button>
-                                        </div>
-                                    </template>
-                                </div>
-                            </div>
-
-                            <!-- Items Section -->
+                                <!-- Items Section -->
                             <div>
                                 <div class="flex justify-between items-center mb-3">
                                     <h3 class="text-xl font-semibold text-gray-700">Items</h3>
@@ -178,7 +112,7 @@
                                 <!-- Add Item Form -->
                                 <div x-show="showAddItem" class="mb-4 p-4 border border-green-200 rounded bg-green-50">
                                     <div class="space-y-3">
-                                        <template x-for="[fieldId, field] in Object.entries(selectedList.fields)" :key="fieldId">
+                                        <template x-for="[fieldId, field] in getSortedFields(selectedList.fields)" :key="fieldId">
                                             <div>
                                                 <label class="block text-sm font-medium text-gray-700 mb-1" x-text="field.name"></label>
                                                 <input
@@ -231,7 +165,7 @@
                                     <table class="min-w-full divide-y divide-gray-200">
                                         <thead class="bg-gray-100">
                                             <tr>
-                                                <template x-for="[fieldId, field] in Object.entries(selectedList.fields)" :key="fieldId">
+                                                <template x-for="[fieldId, field] in getSortedFields(selectedList.fields)" :key="fieldId">
                                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" x-text="field.name"></th>
                                                 </template>
                                                 <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -240,7 +174,7 @@
                                         <tbody class="bg-white divide-y divide-gray-200">
                                             <template x-for="[itemId, fieldValues] in Object.entries(selectedList.items)" :key="itemId">
                                                 <tr class="hover:bg-gray-50">
-                                                    <template x-for="[fieldId, field] in Object.entries(selectedList.fields)" :key="fieldId">
+                                                    <template x-for="[fieldId, field] in getSortedFields(selectedList.fields)" :key="fieldId">
                                                         <td class="px-4 py-3 text-sm text-gray-900">
                                                             <!-- View mode -->
                                                             <div x-show="editingItemId !== itemId">
@@ -340,12 +274,148 @@
                                     No items yet. Add some items to get started!
                                 </div>
                             </div>
+                            </div>
+
+                            <!-- EDIT MODE -->
+                            <div x-show="viewMode === 'edit'">
+                                <!-- Back button (desktop only) -->
+                                <div class="mb-4 hidden lg:block">
+                                    <button @click="selectedList = null; viewMode = 'view'" class="text-blue-600 hover:text-blue-800 flex items-center gap-2">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                                        </svg>
+                                        Back to Lists
+                                    </button>
+                                </div>
+                                <!-- Edit Header -->
+                                <div class="mb-6 flex items-center justify-between">
+                                    <h2 class="text-3xl font-bold text-gray-800">Edit List</h2>
+                                    <button @click="exitEditMode" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">
+                                        Back to List
+                                    </button>
+                                </div>
+
+                                <!-- List Name Section -->
+                                <div class="mb-8 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                    <h3 class="text-lg font-semibold text-gray-700 mb-3">List Name</h3>
+                                    <div class="flex gap-2">
+                                        <input
+                                            type="text"
+                                            x-model="editListNameValue"
+                                            @keyup.enter="saveListName"
+                                            class="flex-1 px-3 py-2 border border-gray-300 rounded"
+                                        >
+                                        <button
+                                            @click="saveListName"
+                                            :disabled="!editListNameValue.trim() || editListNameValue === selectedList.name"
+                                            class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                                        >
+                                            Save Name
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Fields Section -->
+                                <div class="mb-6">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h3 class="text-lg font-semibold text-gray-700">Fields</h3>
+                                        <button @click="showAddField = !showAddField" class="bg-purple-500 text-white px-4 py-2 rounded hover:bg-purple-600">
+                                            <span x-show="!showAddField">+ Add Field</span>
+                                            <span x-show="showAddField">Cancel</span>
+                                        </button>
+                                    </div>
+
+                                    <!-- Add Field Form -->
+                                    <div x-show="showAddField" class="mb-4 p-4 border border-purple-200 rounded bg-purple-50">
+                                        <div class="space-y-3">
+                                            <input
+                                                type="text"
+                                                x-model="newField.name"
+                                                placeholder="Field name"
+                                                class="w-full px-3 py-2 border border-gray-300 rounded"
+                                            >
+                                            <select x-model="newField.type" class="w-full px-3 py-2 border border-gray-300 rounded">
+                                                <option value="text">Text</option>
+                                                <option value="number">Number</option>
+                                                <option value="boolean">Boolean</option>
+                                                <option value="url">URL</option>
+                                                <option value="image">Image</option>
+                                            </select>
+                                            <div x-show="newField.type === 'text'" class="flex items-center gap-2">
+                                                <input type="checkbox" x-model="newField.multiline" id="multiline-edit" class="rounded">
+                                                <label for="multiline-edit" class="text-sm text-gray-700">Multiline</label>
+                                            </div>
+                                            <div class="flex gap-2">
+                                                <button @click="addField" class="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 flex-1">
+                                                    Add
+                                                </button>
+                                                <button @click="showAddField = false; resetNewField()" class="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400">
+                                                    Cancel
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Fields List -->
+                                    <div class="space-y-2">
+                                        <template x-for="([fieldId, field], index) in getSortedFields(selectedList.fields)" :key="fieldId">
+                                            <div class="flex items-center justify-between p-3 bg-gray-50 rounded border border-gray-200">
+                                                <div class="flex items-center gap-3">
+                                                    <!-- Reorder buttons -->
+                                                    <div class="flex flex-col gap-1">
+                                                        <button
+                                                            @click="moveFieldUp(fieldId)"
+                                                            :disabled="index === 0"
+                                                            class="text-gray-600 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed text-sm"
+                                                            title="Move up"
+                                                        >
+                                                            ▲
+                                                        </button>
+                                                        <button
+                                                            @click="moveFieldDown(fieldId)"
+                                                            :disabled="index === Object.keys(selectedList.fields).length - 1"
+                                                            class="text-gray-600 hover:text-gray-800 disabled:text-gray-300 disabled:cursor-not-allowed text-sm"
+                                                            title="Move down"
+                                                        >
+                                                            ▼
+                                                        </button>
+                                                    </div>
+
+                                                    <!-- Field info -->
+                                                    <div>
+                                                        <span class="font-medium" x-text="field.name"></span>
+                                                        <span class="text-sm text-gray-500 ml-2">
+                                                            (<span x-text="field.type"></span><span x-show="field.type === 'text' && field.multiline"> - multiline</span>)
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <button
+                                                    @click="deleteField(fieldId)"
+                                                    class="text-red-500 hover:text-red-700"
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </template>
+                                        <div x-show="Object.keys(selectedList.fields).length === 0" class="text-center text-gray-500 py-8 border-2 border-dashed border-gray-200 rounded">
+                                            No fields yet. Add a field to get started!
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Info Section -->
+                                <div class="mt-6 p-4 bg-blue-50 rounded-lg">
+                                    <p class="text-sm text-gray-700">
+                                        This list currently has <span class="font-semibold" x-text="Object.keys(selectedList.items).length"></span> items.
+                                    </p>
+                                    <p class="text-sm text-gray-500 mt-1">
+                                        Adding a field will add it to all existing items with a default value. Deleting a field will remove it from all items.
+                                    </p>
+                                </div>
+                            </div>
                         </div>
                     </template>
-                </div>
-
-                <div x-show="!selectedList" class="bg-white rounded-lg shadow p-12 text-center">
-                    <p class="text-gray-500 text-lg">Select a list to view details</p>
                 </div>
             </div>
         </div>
@@ -356,9 +426,9 @@
             return {
                 lists: [],
                 selectedList: null,
+                viewMode: 'view', // 'view' or 'edit'
                 showCreateList: false,
                 newListName: '',
-                editingListName: false,
                 editListNameValue: '',
                 showAddField: false,
                 newField: {
@@ -370,6 +440,14 @@
                 newItemValues: {},
                 editingItemId: null,
                 editItemValues: {},
+
+                getSortedFields(fields) {
+                    return Object.entries(fields).sort((a, b) => {
+                        const orderA = a[1].order ?? 0;
+                        const orderB = b[1].order ?? 0;
+                        return orderA - orderB;
+                    });
+                },
 
                 async init() {
                     await this.loadLists();
@@ -417,6 +495,7 @@
                     try {
                         const response = await fetch(`/lists/${listId}`);
                         this.selectedList = await response.json();
+                        this.viewMode = 'view';
                         this.resetNewItem();
                         this.editingItemId = null;
                         this.editItemValues = {};
@@ -446,9 +525,15 @@
                     }
                 },
 
-                startEditListName() {
+                enterEditMode() {
                     this.editListNameValue = this.selectedList.name;
-                    this.editingListName = true;
+                    this.viewMode = 'edit';
+                },
+
+                exitEditMode() {
+                    this.viewMode = 'view';
+                    this.showAddField = false;
+                    this.resetNewField();
                 },
 
                 async saveListName() {
@@ -462,7 +547,6 @@
                         });
 
                         if (response.ok) {
-                            this.editingListName = false;
                             await this.loadLists();
                         }
                     } catch (error) {
@@ -530,6 +614,50 @@
                     } catch (error) {
                         console.error('Error deleting field:', error);
                         alert('Failed to delete field');
+                    }
+                },
+
+                async moveFieldUp(fieldId) {
+                    try {
+                        const response = await fetch(`/lists/${this.selectedList.id}/fields/${fieldId}/move`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ direction: 'up' })
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.detail || 'Failed to move field');
+                        }
+
+                        const updatedList = await response.json();
+                        this.selectedList = updatedList;
+                        this.updateListInArray(updatedList);
+                    } catch (error) {
+                        console.error('Error moving field:', error);
+                        alert('Error moving field: ' + error.message);
+                    }
+                },
+
+                async moveFieldDown(fieldId) {
+                    try {
+                        const response = await fetch(`/lists/${this.selectedList.id}/fields/${fieldId}/move`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ direction: 'down' })
+                        });
+
+                        if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.detail || 'Failed to move field');
+                        }
+
+                        const updatedList = await response.json();
+                        this.selectedList = updatedList;
+                        this.updateListInArray(updatedList);
+                    } catch (error) {
+                        console.error('Error moving field:', error);
+                        alert('Error moving field: ' + error.message);
                     }
                 },
 

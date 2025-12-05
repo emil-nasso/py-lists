@@ -14,6 +14,7 @@ from app.field_types import (
 from app.field_types import (
     FieldHandlerRegistry as _FieldHandlerRegistry,
 )
+from app.migration import DataMigrator as _DataMigrator
 from app.persistence import PersistenceManager as _PersistenceManager
 from app.repositories import ListRepository as _ListRepository
 from app.seeder import ListSeeder as _ListSeeder
@@ -43,11 +44,18 @@ def get_persistence_manager() -> _PersistenceManager:
 
 
 @functools.lru_cache
+def get_migrator() -> _DataMigrator:
+    """Get the singleton data migrator."""
+    return _DataMigrator(persistence_manager=get_persistence_manager())
+
+
+@functools.lru_cache
 def get_list_repository() -> _ListRepository:
     """Get the singleton list repository."""
     return _ListRepository(
         field_registry=get_field_registry(),
         persistence_manager=get_persistence_manager(),
+        migrator=get_migrator(),
     )
 
 
@@ -59,5 +67,6 @@ def get_list_seeder() -> _ListSeeder:
 # Dependency declarations
 FieldHandlerRegistry = Annotated[_FieldHandlerRegistry, Depends(get_field_registry)]
 PersistenceManager = Annotated[_PersistenceManager, Depends(get_persistence_manager)]
+Migrator = Annotated[_DataMigrator, Depends(get_migrator)]
 ListRepository = Annotated[_ListRepository, Depends(get_list_repository)]
 ListSeeder = Annotated[_ListSeeder, Depends(get_list_seeder)]

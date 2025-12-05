@@ -8,7 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from app import deps
 from app.field_types import FieldTypeCreateUnion
 from app.models import List
-from app.schemas import ItemValues, ListCreate, ListUpdate
+from app.schemas import FieldMoveRequest, FieldReorderRequest, ItemValues, ListCreate, ListUpdate
 
 # Configure logging
 logging.basicConfig(
@@ -81,6 +81,44 @@ def delete_field_from_list(
     list = list_repository.delete_field(list_id, field_id)
     if not list:
         raise HTTPException(status_code=404, detail="List or field not found")
+    return list
+
+
+@app.patch(
+    "/lists/{list_id}/fields/{field_id}/move",
+    response_model=List,
+    status_code=200,
+    tags=["fields"],
+)
+def move_field_in_list(
+    list_id: UUID,
+    field_id: UUID,
+    move_request: FieldMoveRequest,
+    list_repository: deps.ListRepository,
+) -> List:
+    try:
+        list = list_repository.move_field(list_id, field_id, move_request.direction)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not list:
+        raise HTTPException(status_code=404, detail="List or field not found")
+    return list
+
+
+@app.patch("/lists/{list_id}/fields/order", response_model=List, status_code=200, tags=["fields"])
+def reorder_fields_in_list(
+    list_id: UUID,
+    reorder_request: FieldReorderRequest,
+    list_repository: deps.ListRepository,
+) -> List:
+    try:
+        list = list_repository.reorder_fields(list_id, reorder_request.field_orders)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    if not list:
+        raise HTTPException(status_code=404, detail="List not found")
     return list
 
 
